@@ -127,5 +127,34 @@ class Appfigures
       })
     end.first
   end
+  
+  # GET /ranks/snapshots/current/gb/6012/free?count=10
+  def rankings(product_id, options = {})
+    url = "ratings"
+    options = {group_by: 'product',
+               products: product_id}.merge(options)
+    self.connection.get(url, options).body.map do |product, hash|
+      Hashie::Mash.new({
+          'breakdown' => hash['breakdown'],
+          'average' => hash['average'],
+          'product_id' => hash['product_id']
+      })
+    end.first
+  end
+
+  # GET /ranks/520459/daily/2010-07-05/2010-07-07/?countries=gb;us
+  def ranking(product_id, start_date, end_date, options = {})
+    options = {
+      start: start_date.strftime('%Y-%m-%d'),
+      end: end_date.strftime('%Y-%m-%d'),
+      tz: 'utc',
+    countries: 'gb'}.merge(options)
+
+    url = "ranks/#{product_id}/daily/#{options[:start]}/#{options[:end]}"
+    body  = self.connection.get(url, options).body
+    data  = body["data"]
+    dates = body["dates"]
+    Hash[Hash[data.group_by{|d| d["category"]["device"]}.map{|device, info| [device, [info.map{|i| Hash[i["category"]["name"],i['positions'].map.with_index{|p, i|[dates[i],p] }]}]]}].map{|k,v|[k,v.first]}]
+  end
 
 end
